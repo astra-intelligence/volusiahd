@@ -262,7 +262,6 @@ class Command(BaseCommand):
             "season_start": datetime.date(2026, 9, 1 + index),
             "season_end": datetime.date(2027, 5, 15 + index),
             "meeting_schedule": "No meetings the week of Thanksgiving." if index == 1 else "",
-            "host_name": f"{name.split()[0]} Association" if index % 2 == 0 else "",
             "class_names": self._classes(slug),
             "instructor_info": (
                 "Taught by two Florida-certified teachers, both homeschooling parents "

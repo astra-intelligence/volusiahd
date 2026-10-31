@@ -92,6 +92,24 @@
       });
     }
 
+    form.querySelectorAll("input[data-class-list]").forEach(function (input) {
+      classList(input, jq);
+    });
+
+    // Enter in a chip box means "add this", never "next page" or "send". Select2
+    // blocks the keystroke itself in most browsers but not all, and a form that
+    // jumps a page when someone adds a class loses them. Registered before the
+    // page-by-page handler, so it gets the first say.
+    form.addEventListener("submit", function (event) {
+      var active = document.activeElement;
+      var box = active && active.closest ? active.closest(".select2") : null;
+      if (!box || !form.contains(box)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      var select = box.previousElementSibling;
+      if (select && typeof select.addTyped === "function") select.addTyped(active);
+    });
+
     var scoped = Array.prototype.slice.call(form.querySelectorAll("[data-asked-by]"));
     // Radios and checkboxes carry the attribute on every one of their inputs, so
     // the same field turns up several times. Once is enough.
@@ -165,6 +183,66 @@
     });
     refresh();
     if (pager) pager.start();
+  }
+
+  /* ---------------------------------------------------------------------
+   * Classes offered, as chips (#34).
+   *
+   * The server renders a plain text box holding "Spanish I, Spanish II". This
+   * puts a Select2 box in its place, one chip per class, typed freely and
+   * ended with Enter or a comma. The text box stays in the form, hidden, and
+   * is rewritten on every change, so what's posted is exactly what the form
+   * would get without the script. Commas can't appear inside a class name,
+   * since they're what separates one from the next.
+   * ------------------------------------------------------------------- */
+
+  function classList(input, jq) {
+    if (!jq || typeof jq.fn.select2 !== "function") return;
+
+    var select = document.createElement("select");
+    select.multiple = true;
+    // The label points at the input's id; hand it to the box people use.
+    select.id = input.id;
+    input.id = input.id + "_value";
+    input.type = "hidden";
+    input.parentNode.insertBefore(select, input);
+
+    input.value.split(",").forEach(function (name) {
+      name = name.trim();
+      if (name) select.appendChild(new Option(name, name, true, true));
+    });
+
+    jq(select).select2({
+      tags: true,
+      tokenSeparators: [","],
+      width: "100%",
+      placeholder: input.dataset.placeholder || "",
+      selectOnClose: true,
+      // There is no list to choose from, so don't open an empty one.
+      minimumInputLength: 1,
+      language: {
+        inputTooShort: function () {
+          return "Type a class, then press Enter";
+        }
+      }
+    });
+    jq(select).on("change", function () {
+      input.value = (jq(select).val() || []).join(", ");
+    });
+
+    // Whatever is still typed in the search box becomes a chip. Used when
+    // Enter reached the form instead of Select2 (see the submit guard above).
+    select.addTyped = function (search) {
+      var name = (search.value || "").replace(/,/g, " ").trim();
+      if (!name) return;
+      var taken = Array.prototype.some.call(select.options, function (option) {
+        return option.value.toLowerCase() === name.toLowerCase();
+      });
+      if (!taken) select.appendChild(new Option(name, name, true, true));
+      search.value = "";
+      jq(select).trigger("change");
+      jq(select).select2("close");
+    };
   }
 
   /* ---------------------------------------------------------------------

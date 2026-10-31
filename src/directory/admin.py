@@ -192,7 +192,7 @@ class ProgramAdmin(ModelAdmin):
         (
             "Who runs it",
             {
-                "fields": ["host_name", "class_names", "instructor_info", "faith_basis"],
+                "fields": ["class_names", "instructor_info", "faith_basis"],
                 "description": "A host name is only for a listing that is a class or a "
                 "team under a larger group. Faith affiliation may be left blank, which "
                 "publishes nothing either way.",
@@ -705,7 +705,7 @@ class SubmissionAdmin(ModelAdmin):
                 "fields": [
                     "kind",
                     "program_name",
-                    "host_name",
+                    "class_names",
                     "short_description",
                     "description",
                     "category",
@@ -724,7 +724,6 @@ class SubmissionAdmin(ModelAdmin):
             "Who teaches, and for whom",
             {
                 "fields": [
-                    "class_names",
                     "instructor_info",
                     "faith_basis",
                     "grade_levels",

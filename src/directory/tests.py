@@ -1975,7 +1975,6 @@ class SharedFieldTests(TestCase):
         submission = Submission.objects.create(
             program_name="Everything Co-op",
             short_description="One line.",
-            host_name="Mainland Fellowship",
             class_names="Algebra I, Latin",
             instructor_info="Two teachers, both certified.",
             faith_basis=Submission.Faith.FAITH_BASED,
@@ -2170,11 +2169,9 @@ class ScopedFormTests(TestCase):
             category=str(self.tutoring.pk),
             faith_basis="faith",
             enrollment_notes="Rolling",
-            host_name="Somebody Else",
         )
         self.assertEqual(submission.faith_basis, "")
         self.assertEqual(submission.enrollment_notes, "")
-        self.assertEqual(submission.host_name, "")
         # And the questions tutoring *is* asked still work.
         self.assertEqual(submission.grade_levels, "elementary,middle")
 
@@ -2190,9 +2187,9 @@ class ScopedFormTests(TestCase):
         Narrowing on the strength of an unanswered question would throw away work
         somebody had already done.
         """
-        submission = self._submit(category="", faith_basis="secular", host_name="A Host")
+        submission = self._submit(category="", faith_basis="secular", enrollment_notes="Rolling")
         self.assertEqual(submission.faith_basis, "secular")
-        self.assertEqual(submission.host_name, "A Host")
+        self.assertEqual(submission.enrollment_notes, "Rolling")
 
     def test_grades_are_required_of_a_heading_that_is_asked_for_them(self):
         response = self.client.post(reverse("directory:register"), self._payload(grade_levels=[]))
@@ -3528,6 +3525,79 @@ class RegistrationWordingRoundThreeTests(TestCase):
         self.assertNotIn("Only the ones that apply", self._html())
 
 
+class ProviderAndClassesTests(TestCase):
+    """One listing per provider, with every class it runs listed (#33, #34)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.category = Category.objects.create(name="Co-ops", slug="co-ops")
+
+    def test_classes_are_asked_of_every_heading(self):
+        for slug in q.EVERY:
+            with self.subTest(heading=slug):
+                self.assertIn("class_names", q.fields_for(slug))
+
+    def test_host_name_is_gone(self):
+        from .forms import ProgramRegistrationForm
+
+        self.assertNotIn("host_name", ProgramRegistrationForm.base_fields)
+        self.assertFalse(hasattr(Program, "host_name"))
+
+    def test_the_name_is_the_provider_and_classes_follow_it_on_page_one(self):
+        from .forms import ProgramRegistrationForm
+
+        field = ProgramRegistrationForm.base_fields["program_name"]
+        self.assertEqual(field.label, "Provider/Business name")
+        first_page = (
+            self.client.get(reverse("directory:register"))
+            .content.decode()
+            .split('data-title="Specifics and tags"')[0]
+        )
+        self.assertLess(
+            first_page.index('name="program_name"'), first_page.index('name="class_names"')
+        )
+        self.assertIn("data-class-list", first_page)
+
+    def test_classes_are_tidied_however_they_were_typed(self):
+        payload = RegistrationTests._payload(
+            self, class_names=" Spanish I,spanish i , ,Spanish   II,Conversation club "
+        )
+        self.client.post(reverse("directory:register"), payload)
+        self.assertEqual(
+            Submission.objects.get().class_names, "Spanish I, Spanish II, Conversation club"
+        )
+
+    def test_the_migration_keeps_host_names_in_the_description(self):
+        migration = importlib.import_module(
+            "directory.migrations.0023_provider_name_and_class_list"
+        )
+
+        class Row:
+            def __init__(self, description, host_name):
+                self.description, self.host_name = description, host_name
+
+            def save(self, update_fields):
+                pass
+
+        program = Row("<p>We meet weekly.</p>", "Learning with <Patty>")
+        submission = Row("We meet weekly.", "Learning with Patty")
+
+        def model(rows):
+            return SimpleNamespace(
+                objects=SimpleNamespace(
+                    exclude=lambda host_name: [r for r in rows if r.host_name != host_name]
+                )
+            )
+
+        models_by_name = {"Program": model([program]), "Submission": model([submission])}
+        apps = SimpleNamespace(get_model=lambda app, name: models_by_name[name])
+        migration.keep_host_names(apps, None)
+        self.assertEqual(
+            program.description, "<p>We meet weekly.</p><p>Part of Learning with &lt;Patty&gt;.</p>"
+        )
+        self.assertEqual(submission.description, "We meet weekly.\n\nPart of Learning with Patty.")
+
+
 class SuggestedTagsTests(TestCase):
     """Every heading but co-ops offers the tags the PO approved (#24)."""
 
@@ -3618,7 +3688,7 @@ class PagedRegistrationFormTests(TestCase):
         `clean()` enforces, so the page check and the asterisk need them marked."""
         required = self._required_rows(reverse("directory:register"))
         self.assertLessEqual({"program_name", "grade_levels", "submitter_email"}, required)
-        self.assertNotIn("host_name", required)
+        self.assertNotIn("class_names", required)
 
     def test_the_referral_category_hint_does_not_promise_questions(self):
         """Only the registration form changes its questions by heading."""
@@ -4028,8 +4098,8 @@ class RegistrationExampleTextTests(TestCase):
         from .forms import ProgramRegistrationForm
 
         fields = ProgramRegistrationForm().fields
-        self.assertIn("Beginners Spanish", fields["program_name"].help_text)
-        self.assertIn("Learning with Patty", fields["host_name"].help_text)
+        self.assertIn("Learning with Patty", fields["program_name"].help_text)
+        self.assertIn("Beginners Spanish", fields["class_names"].help_text)
 
     def test_no_hint_talks_about_the_provider_in_the_third_person(self):
         """Model help text is written for us in the admin ("Tick if they come to

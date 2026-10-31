@@ -1067,7 +1067,6 @@ main.listing-page { padding-block: 0 var(--s-8); }
   .listing-results { padding-inline: var(--s-4); }
 }
 
-.program .host { color: var(--muted); margin: calc(var(--s-2) * -1) 0 var(--s-3); }
 .program-section { margin-top: var(--s-6); }
 .program-section h2 {
   font-size: 1.15rem;

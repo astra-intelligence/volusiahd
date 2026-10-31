@@ -236,12 +236,11 @@ class ProgramRegistrationForm(BaseSubmissionForm):
         # `_scope_fields` below.
         fields = [
             "program_name",
-            "host_name",
+            "class_names",
             "short_description",
             "description",
             "category",
             "tags",
-            "class_names",
             "faith_basis",
             "instructor_info",
             "website",
@@ -274,8 +273,7 @@ class ProgramRegistrationForm(BaseSubmissionForm):
             "is_authorized",
         ]
         labels = {
-            "program_name": "Program name",
-            "host_name": "Host or group name",
+            "program_name": "Provider/Business name",
             "short_description": "One-line description",
             "description": "Full description",
             "class_names": "Classes offered",
@@ -312,22 +310,24 @@ class ProgramRegistrationForm(BaseSubmissionForm):
         # provider knows what we mean before they start typing (#8). Checkboxes,
         # dropdowns and dates explain themselves and only get a hint where there
         # is something to say. The examples hang together — one tutor, Patty
-        # Ruiz, running "Beginners Spanish" under "Learning with Patty" — so the
-        # form reads as one listing being filled in.
+        # Ruiz, whose business "Learning with Patty" runs "Beginners Spanish" —
+        # so the form reads as one listing being filled in.
+        #
+        # One listing per provider (#33, #34): the name is the business or
+        # group, and each class it runs goes under Classes offered.
         help_texts = {
-            "program_name": "The name families will see at the top of your listing — "
-            "e.g. 'Beginners Spanish' or 'Bright Horizon Co-op'.",
-            "host_name": "Only if your listing is one class or team run by a larger "
-            "group or business — e.g. 'Learning with Patty' for her Beginners Spanish "
-            "class. Leave it blank if they are the same thing.",
+            "program_name": "Your business or group, as families will see it at the "
+            "top of your listing — e.g. 'Learning with Patty' or 'Bright Horizon "
+            "Co-op'. Register once, and list each class you run below.",
             "short_description": "One sentence that families read in the directory "
             "before they click through — e.g. 'A weekly conversation class for "
             "beginners, ages 8 to 12.'",
             "description": "What you do and the benefits of your program — e.g. what a "
             "typical session looks like, and what makes it special. Leave a blank line "
             "between paragraphs.",
-            "class_names": "Each class you offer, separated by commas — e.g. "
-            "'Algebra I, Geometry, Chemistry'.",
+            "class_names": "Every class or activity you run, so families can search for "
+            "them. Type one and press Enter, then the next — e.g. 'Beginners Spanish', "
+            "'Spanish II'.",
             "faith_basis": "Families ask, so we ask. Leave it blank if you would rather "
             "not answer — that is not the same as saying no, and we will publish neither.",
             "instructor_info": "Who teaches or leads, and what qualifies them — e.g. "
@@ -373,6 +373,11 @@ class ProgramRegistrationForm(BaseSubmissionForm):
         }
         widgets = {
             "short_description": forms.TextInput,
+            # A text box that register-form.js turns into chips, one per class
+            # (#34). Without the script it's still a list typed with commas.
+            "class_names": forms.TextInput(
+                attrs={"data-class-list": "", "data-placeholder": "Type a class and press Enter"}
+            ),
             "description": forms.Textarea(attrs={"rows": 8}),
             "instructor_info": forms.Textarea(attrs={"rows": 4}),
             "cost_notes": forms.Textarea(attrs={"rows": 3}),
@@ -624,6 +629,20 @@ class ProgramRegistrationForm(BaseSubmissionForm):
         if isinstance(field, models.BooleanField):
             return False
         return None if field.null else ""
+
+    def clean_class_names(self):
+        """One tidy comma-separated line, however it was typed (#34).
+
+        The script sends the chips joined with commas; without it, people type
+        the list themselves. Either way: trimmed, no empties, no repeats.
+        """
+        seen, names = set(), []
+        for name in self.cleaned_data.get("class_names", "").split(","):
+            name = " ".join(name.split())
+            if name and name.lower() not in seen:
+                seen.add(name.lower())
+                names.append(name)
+        return ", ".join(names)
 
     def clean_suggested_tags(self):
         """The suggestions as a list: trimmed, de-duplicated, and checked."""

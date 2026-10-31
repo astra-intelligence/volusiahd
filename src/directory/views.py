@@ -103,7 +103,6 @@ def _matches_one_spelling(word):
         by_level |= Q(grade_levels__contains=level)
     return by_level | (
         Q(name__icontains=word)
-        | Q(host_name__icontains=word)
         | Q(short_description__icontains=word)
         | Q(description__icontains=word)
         | Q(class_names__icontains=word)

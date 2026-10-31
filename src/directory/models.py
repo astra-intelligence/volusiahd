@@ -550,19 +550,15 @@ class SharedProgramFields(models.Model):
 
     # --- Who is behind it ---------------------------------------------------
 
-    host_name = models.CharField(
-        "host or group name",
-        max_length=120,
-        blank=True,
-        help_text="The larger group this runs under, when the listing is a class or a "
-        "team rather than the group itself. Leave blank when they are the same thing.",
-    )
-    class_names = models.CharField(
+    # One listing per provider, with every class it offers listed here (#34).
+    # Stored as one comma-separated line, which keyword search reads as text;
+    # the registration form edits it as a list. A text field because a
+    # provider with a dozen classes outgrows any short limit.
+    class_names = models.TextField(
         "classes offered",
-        max_length=240,
         blank=True,
-        help_text="The individual classes, separated by commas — "
-        "e.g. 'Algebra I, Geometry, Chemistry'.",
+        help_text="Every class or activity they offer, separated by commas — "
+        "e.g. 'Beginners Spanish, Spanish II, Conversation club'.",
     )
     instructor_info = models.TextField(
         "teacher qualifications / leader bio",
@@ -944,7 +940,7 @@ class Program(SanitizedRichTextMixin, SharedProgramFields):
         PUBLISHED = "published", "Published — visible to everyone"
         ARCHIVED = "archived", "Archived — no longer operating"
 
-    name = models.CharField(max_length=160)
+    name = models.CharField("provider/business name", max_length=160)
     slug = models.SlugField(
         max_length=160,
         unique=True,
@@ -1506,7 +1502,7 @@ class Submission(SharedProgramFields):
 
     # --- The program itself. These mirror `Program` field for field. --------
 
-    program_name = models.CharField(max_length=160)
+    program_name = models.CharField("provider/business name", max_length=160)
     short_description = models.CharField(
         max_length=240,
         blank=True,

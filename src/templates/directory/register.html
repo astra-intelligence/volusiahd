@@ -61,7 +61,7 @@ sections simply stack and the whole form shows, as it always has.
       {% field form.is_authorized %}
       {% field form.category %}
       {% field form.program_name %}
-      {% field form.host_name %}
+      {% field form.class_names %}
       {% field form.short_description %}
       {% field form.description %}
     </fieldset>
@@ -86,7 +86,6 @@ sections simply stack and the whole form shows, as it always has.
   <section class="form-page form-panel" data-form-page data-title="Who teaches and who it is for">
     <fieldset>
       <legend>Who teaches, and what you teach</legend>
-      {% field form.class_names %}
       {% field form.instructor_info %}
       {% field form.faith_basis %}
     </fieldset>

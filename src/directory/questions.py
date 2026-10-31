@@ -78,10 +78,6 @@ def _all_but(*slugs):
     return EVERY - set(slugs)
 
 
-# The four types that list classes under a larger host: the listing is the class,
-# and the host is a separate thing worth naming.
-_CLASSES_UNDER_A_HOST = frozenset({CORE_ACADEMICS, ARTS_AND_CRAFTS, PERFORMING_ARTS, ENRICHMENT})
-
 # The three that come to you, or meet wherever suits, rather than at an address.
 _COMES_TO_YOU = frozenset({TESTING, SPECIAL_NEEDS, TUTORING})
 
@@ -127,8 +123,8 @@ ASKED_BY = {
     "step_up_direct_pay": _all_but(PLAY_GROUPS, PARENT_SUPPORT),
     "step_up_pep": _all_but(PLAY_GROUPS, PARENT_SUPPORT),
     "step_up_fes_ua": _all_but(PLAY_GROUPS, PARENT_SUPPORT),
-    "host_name": _CLASSES_UNDER_A_HOST,
-    "class_names": _CLASSES_UNDER_A_HOST,
+    # Every provider lists what it runs, whatever kind of program it is (#34).
+    "class_names": EVERY,
     # Who teaches, asked wherever somebody is being taught rather than met.
     "instructor_info": frozenset(
         {
