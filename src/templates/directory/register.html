@@ -58,6 +58,7 @@ sections simply stack and the whole form shows, as it always has.
   <section class="form-page form-panel" data-form-page data-title="The basics">
     <fieldset>
       <legend>The basics</legend>
+      {% field form.is_authorized %}
       {% field form.category %}
       {% field form.program_name %}
       {% field form.host_name %}
@@ -70,7 +71,6 @@ sections simply stack and the whole form shows, as it always has.
     {% if form.question_fields %}
       <fieldset>
         <legend>A few specifics</legend>
-        <p class="hint">Only the ones that apply to your kind of program are shown.</p>
         {% for question in form.question_fields %}{% field question is_answer=True %}{% endfor %}
       </fieldset>
     {% endif %}
@@ -157,7 +157,6 @@ sections simply stack and the whole form shows, as it always has.
       {% field form.submitter_name %}
       {% field form.submitter_email %}
       {% field form.submitter_role %}
-      {% field form.is_authorized %}
     </fieldset>
   </section>
 

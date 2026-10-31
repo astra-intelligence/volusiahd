@@ -3499,6 +3499,35 @@ class TagSuggestionTests(TestCase):
         self.assertContains(response, "Lego robotics")
 
 
+class RegistrationWordingRoundThreeTests(TestCase):
+    """The PO's third page of notes: wording and order (#31, #35, #37, #38)."""
+
+    def _html(self):
+        return self.client.get(reverse("directory:register")).content.decode()
+
+    def test_authorization_is_the_first_question(self):
+        first_page = self._html().split('data-title="Specifics and tags"')[0]
+        self.assertLess(
+            first_page.index('name="is_authorized"'), first_page.index('name="category"')
+        )
+
+    def test_the_program_name_example_names_no_place(self):
+        from .forms import ProgramRegistrationForm
+
+        hint = str(ProgramRegistrationForm.base_fields["program_name"].help_text)
+        self.assertIn("Bright Horizon Co-op", hint)
+        self.assertNotIn("Ormond", hint)
+
+    def test_the_suggest_a_tag_hint_ends_where_the_po_said(self):
+        from .forms import ProgramRegistrationForm
+
+        hint = str(ProgramRegistrationForm.base_fields["suggested_tags"].help_text)
+        self.assertTrue(hint.endswith("We review every tag suggestion."))
+
+    def test_a_few_specifics_has_no_hint(self):
+        self.assertNotIn("Only the ones that apply", self._html())
+
+
 class SuggestedTagsTests(TestCase):
     """Every heading but co-ops offers the tags the PO approved (#24)."""
 
@@ -3516,7 +3545,7 @@ class SuggestedTagsTests(TestCase):
         for slug in q.EVERY:
             with self.subTest(heading=slug):
                 if slug == q.CO_OPS:
-                    self.assertEqual(self._suggested(slug), set(), "Co-ops wait on #29")
+                    self.assertEqual(self._suggested(slug), set(), "Co-ops have none (#29)")
                 else:
                     self.assertGreaterEqual(len(self._suggested(slug)), 5)
 

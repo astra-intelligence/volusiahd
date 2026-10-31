@@ -16,9 +16,8 @@ Those are seeded in full.
 
 The subject vocabularies are not structural. They are the suggestions a
 provider sees for their heading, and every list here was approved by the
-directory's owner (#24). Co-ops have none yet, because she turned down the
-drafts and is writing her own (#29). A tag nobody chose is worse than a tag
-that is missing, because a missing one gets asked for.
+directory's owner (#24). Co-ops have none, by her choice (#29). A tag nobody
+chose is worse than a tag that is missing, because a missing one gets asked for.
 """
 
 from django.core.management.base import BaseCommand
@@ -346,9 +345,7 @@ class Command(BaseCommand):
             self._questions(headings)
             self._subjects(headings)
         self.stdout.write(
-            self.style.SUCCESS(
-                "Done. Co-ops have no suggested tags yet (#29); add them here or under Categories."
-            )
+            self.style.SUCCESS("Done. Add suggested tags here, or under Categories in the admin.")
         )
 
     def _headings(self):

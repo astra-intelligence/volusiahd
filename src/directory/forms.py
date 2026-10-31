@@ -226,8 +226,7 @@ class ProgramRegistrationForm(BaseSubmissionForm):
         max_length=200,
         label="Suggest a tag",
         help_text="Can't find the word you want? Suggest up to three, separated by "
-        "commas — e.g. 'Lego robotics'. We review every suggestion, and your listing "
-        "won't wait for it.",
+        "commas — e.g. 'Lego robotics'. We review every tag suggestion.",
     )
 
     class Meta:
@@ -317,7 +316,7 @@ class ProgramRegistrationForm(BaseSubmissionForm):
         # form reads as one listing being filled in.
         help_texts = {
             "program_name": "The name families will see at the top of your listing — "
-            "e.g. 'Beginners Spanish' or 'Ormond Beach Homeschool Co-op'.",
+            "e.g. 'Beginners Spanish' or 'Bright Horizon Co-op'.",
             "host_name": "Only if your listing is one class or team run by a larger "
             "group or business — e.g. 'Learning with Patty' for her Beginners Spanish "
             "class. Leave it blank if they are the same thing.",
