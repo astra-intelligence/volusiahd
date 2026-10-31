@@ -267,8 +267,9 @@
 
     form.classList.add("is-paged");
 
-    var back = button("Back", "button-quiet");
-    var next = button("Next", "");
+    // Back looks like Next, so it's as easy to find (#32).
+    var back = button("← Back", "form-back");
+    var next = button("Next", "form-next");
     submit.parentNode.insertBefore(back, submit);
     submit.parentNode.insertBefore(next, submit);
 
@@ -279,7 +280,7 @@
     status.setAttribute("aria-live", "polite");
     var steps = document.createElement("ol");
     steps.className = "form-progress__steps";
-    steps.setAttribute("aria-hidden", "true");
+    steps.setAttribute("aria-label", "Progress");
     progress.appendChild(status);
     progress.appendChild(steps);
     submit.parentNode.appendChild(progress);
@@ -332,11 +333,35 @@
 
       status.textContent =
         "Step " + (index + 1) + " of " + shown.length + ": " + (current.dataset.title || "");
+      // Finished steps are buttons back to their page (#32). Steps ahead
+      // aren't, since Next checks each page's required fields on the way.
       steps.textContent = "";
       shown.forEach(function (page, position) {
         var step = document.createElement("li");
-        if (position < index) step.className = "is-done";
-        if (position === index) step.className = "is-current";
+        var title = "step " + (position + 1) + ": " + (page.dataset.title || "");
+        var bar;
+        if (position < index) {
+          step.className = "is-done";
+          bar = document.createElement("button");
+          bar.type = "button";
+          bar.setAttribute("aria-label", "Back to " + title);
+          bar.title = "Back to " + title;
+          bar.addEventListener("click", function () {
+            clearProblems();
+            show(page, { history: true, focus: true });
+          });
+        } else {
+          bar = document.createElement("span");
+          bar.title = "Step " + title.slice(5);
+          if (position === index) {
+            step.className = "is-current";
+            step.setAttribute("aria-current", "step");
+          }
+          // The status line above already reads these out.
+          step.setAttribute("aria-hidden", "true");
+        }
+        bar.className = "form-progress__step";
+        step.appendChild(bar);
         steps.appendChild(step);
       });
     }

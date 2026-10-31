@@ -1175,8 +1175,10 @@ fieldset[hidden],
 .form-actions button[hidden],
 .form-actions .hint[hidden] { display: none; }
 
-/* Next or Register stays on the right whether or not Back is there. */
-.is-paged .form-actions button:not(.button-quiet) { margin-left: auto; }
+/* Next or Register stays on the right whether or not Back is there. Back is
+   a full button like Next (#32), so the pair reads as a choice. */
+.is-paged .form-actions .form-next,
+.is-paged .form-actions [data-form-submit] { margin-left: auto; }
 
 .form-progress { flex-basis: 100%; margin-top: var(--s-4); }
 .form-progress__status { margin: 0 0 var(--s-2); color: var(--muted); font-size: .9rem; }
@@ -1187,16 +1189,30 @@ fieldset[hidden],
   margin: 0;
   padding: 0;
 }
-.form-progress__steps li {
+.form-progress__steps li { flex: 1; display: flex; }
+/* Each step is a thin bar, but a finished one is also a button back to its
+   page (#32). The padding is invisible click room above and below the bar:
+   the colour is painted on the content box only. */
+.form-progress__steps .form-progress__step {
   flex: 1;
-  height: .35rem;
+  display: block;
+  height: 1.1rem;
+  padding: .375rem 0;
+  border: 0;
   border-radius: var(--radius-pill);
+  box-shadow: none;
   /* Faded from the theme's own colours, so both themes get a visible track
      and the finished steps keep the accent's hue. */
-  background: color-mix(in srgb, var(--muted) 25%, transparent);
+  background: color-mix(in srgb, var(--muted) 25%, transparent) content-box;
 }
-.form-progress__steps li.is-done { background: color-mix(in srgb, var(--accent) 45%, transparent); }
-.form-progress__steps li.is-current { background: var(--accent); }
+.form-progress__steps .is-done .form-progress__step {
+  background: color-mix(in srgb, var(--accent) 45%, transparent) content-box;
+  cursor: pointer;
+}
+.form-progress__steps .is-done .form-progress__step:hover {
+  background: var(--accent-hover) content-box;
+}
+.form-progress__steps .is-current .form-progress__step { background: var(--accent) content-box; }
 
 /* --- Fallbacks -----------------------------------------------------------
    Translucency is the first thing to give up, and it has to be given up in

@@ -13,6 +13,7 @@ they should have to go hunting through paragraphs for. It stays optional, and
 "not stated" is a perfectly good answer to publish.
 """
 
+import calendar
 import math
 import re
 import time
@@ -506,10 +507,21 @@ def _clock(value):
     return f"{clock} {'a.m.' if value.hour < 12 else 'p.m.'}"
 
 
-def _date(value, *, year=False):
-    """September 2, or September 2, 2026 when the year is doing work."""
-    text = f"{value.strftime('%B')} {value.day}"
-    return f"{text}, {value.year}" if year else text
+# Season and enrollment are months, not dates (#36). A listing is filled in
+# once and rarely touched again, so "September" stays true every year where
+# "September 2, 2026" goes stale by the next one.
+MONTHS = [(number, calendar.month_name[number]) for number in range(1, 13)]
+MONTH_NAMES = dict(MONTHS)
+
+
+def _month(value):
+    return MONTH_NAMES.get(value, "")
+
+
+def month_field(verbose_name=None, **kwargs):
+    return models.PositiveSmallIntegerField(
+        verbose_name, null=True, blank=True, choices=MONTHS, **kwargs
+    )
 
 
 class SharedProgramFields(models.Model):
@@ -614,14 +626,12 @@ class SharedProgramFields(models.Model):
         help_text="Leave blank if it varies.",
     )
     meeting_time_end = models.TimeField("ends at", null=True, blank=True)
-    season_start = models.DateField(
+    season_start = month_field(
         "first meeting",
-        null=True,
-        blank=True,
-        help_text="The date this season or term starts. Leave blank if they run "
+        help_text="The month this season or term starts. Leave blank if they run "
         "year round or have not set one.",
     )
-    season_end = models.DateField("last meeting", null=True, blank=True)
+    season_end = month_field("last meeting")
     meeting_schedule = models.TextField(
         "anything else about when",
         blank=True,
@@ -629,8 +639,8 @@ class SharedProgramFields(models.Model):
         "e.g. 'alternate Tuesdays' or 'times vary by class'.",
     )
 
-    enrollment_opens = models.DateField(null=True, blank=True)
-    enrollment_closes = models.DateField(null=True, blank=True)
+    enrollment_opens = month_field()
+    enrollment_closes = month_field()
     enrollment_notes = models.CharField(
         "enrollment, in words",
         max_length=160,
@@ -782,12 +792,13 @@ class SharedProgramFields(models.Model):
 
     @property
     def season_display(self):
-        if self.season_start and self.season_end:
-            return f"{self.season_start.strftime('%B')} through {self.season_end.strftime('%B')}"
-        if self.season_start:
-            return f"from {_date(self.season_start)}"
-        if self.season_end:
-            return f"until {_date(self.season_end)}"
+        start, end = _month(self.season_start), _month(self.season_end)
+        if start and end:
+            return f"{start} through {end}"
+        if start:
+            return f"from {start}"
+        if end:
+            return f"until {end}"
         return ""
 
     @property
@@ -798,13 +809,14 @@ class SharedProgramFields(models.Model):
 
     @property
     def enrollment_display(self):
-        """When you can sign up, in words, or the notes if there are no dates."""
-        if self.enrollment_opens and self.enrollment_closes:
-            return f"{_date(self.enrollment_opens)} to {_date(self.enrollment_closes, year=True)}"
-        if self.enrollment_closes:
-            return f"closes {_date(self.enrollment_closes, year=True)}"
-        if self.enrollment_opens:
-            return f"opens {_date(self.enrollment_opens, year=True)}"
+        """When you can sign up, in words, or the notes if there are no months."""
+        opens, closes = _month(self.enrollment_opens), _month(self.enrollment_closes)
+        if opens and closes:
+            return f"{opens} to {closes}"
+        if closes:
+            return f"closes in {closes}"
+        if opens:
+            return f"opens in {opens}"
         return self.enrollment_notes
 
     @property

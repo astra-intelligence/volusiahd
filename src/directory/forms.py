@@ -350,7 +350,7 @@ class ProgramRegistrationForm(BaseSubmissionForm):
             "grade_levels": "Tick every level you take. Families filter by this.",
             "meeting_days": "Tick every day you normally meet. Families filter by this.",
             "meeting_time_start": "Leave blank if it varies.",
-            "season_start": "The date your term or season starts. Leave blank if you run "
+            "season_start": "The month your term or season starts. Leave blank if you run "
             "year round.",
             "meeting_schedule": "Anything the boxes above cannot say — e.g. 'alternate "
             "Tuesdays' or 'times vary by class'.",
@@ -382,19 +382,20 @@ class ProgramRegistrationForm(BaseSubmissionForm):
             "instructor_info": forms.Textarea(attrs={"rows": 4}),
             "cost_notes": forms.Textarea(attrs={"rows": 3}),
             "meeting_schedule": forms.Textarea(attrs={"rows": 2}),
-            # `type=date` and `type=time` rather than a date picker of our own:
-            # every browser and phone that matters has one, and theirs is the one
-            # the person filling this in already knows how to use.
-            "season_start": forms.DateInput(attrs={"type": "date"}),
-            "season_end": forms.DateInput(attrs={"type": "date"}),
-            "enrollment_opens": forms.DateInput(attrs={"type": "date"}),
-            "enrollment_closes": forms.DateInput(attrs={"type": "date"}),
+            # `type=time` rather than a time picker of our own: every browser and
+            # phone that matters has one, and theirs is the one the person filling
+            # this in already knows how to use. The season and enrollment fields
+            # are month dropdowns (#36), from the model's choices.
             "meeting_time_start": forms.TimeInput(attrs={"type": "time"}),
             "meeting_time_end": forms.TimeInput(attrs={"type": "time"}),
         }
 
     # Blank is a real answer to each of these, and "---------" says so badly.
     BLANK_LABELS = {
+        "season_start": "Choose a month",
+        "season_end": "Choose a month",
+        "enrollment_opens": "Choose a month",
+        "enrollment_closes": "Choose a month",
         "faith_basis": "Prefer not to say",
         "cost_basis": "Choose one",
         "delivery": "Choose one",

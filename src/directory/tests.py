@@ -44,6 +44,7 @@ from .addresses import DEBOUNCE_MS, MIN_QUERY_CHARS, LocationsField
 from .models import (
     GRADE_LEVELS,
     GRADE_SEARCH_TERMS,
+    MONTHS,
     WEEKDAY_NAMES,
     Category,
     ContactPerson,
@@ -1986,11 +1987,11 @@ class SharedFieldTests(TestCase):
             meeting_days="tue,thu",
             meeting_time_start="09:00",
             meeting_time_end="12:00",
-            season_start="2026-09-01",
-            season_end="2027-05-20",
+            season_start=9,
+            season_end=5,
             meeting_schedule="Alternate Fridays too.",
-            enrollment_opens="2026-06-01",
-            enrollment_closes="2026-08-15",
+            enrollment_opens=6,
+            enrollment_closes=8,
             enrollment_notes="Rolling after that.",
             cost_basis=Submission.Cost.PAID,
             cost_notes="$45 a semester.",
@@ -2085,16 +2086,21 @@ class DisplayTests(SimpleTestCase):
             "from 1:30 p.m.",
         )
 
-    def test_a_season_reads_as_months_when_both_ends_are_known(self):
-        import datetime
-
-        program = Program(
-            season_start=datetime.date(2026, 9, 2), season_end=datetime.date(2027, 5, 20)
-        )
-        self.assertEqual(program.season_display, "September through May")
+    def test_a_season_reads_as_months(self):
+        """Months only, never a day or a year (#36)."""
         self.assertEqual(
-            Program(season_start=datetime.date(2026, 9, 2)).season_display, "from September 2"
+            Program(season_start=9, season_end=5).season_display, "September through May"
         )
+        self.assertEqual(Program(season_start=9).season_display, "from September")
+        self.assertEqual(Program(season_end=5).season_display, "until May")
+
+    def test_enrollment_reads_as_months(self):
+        self.assertEqual(
+            Program(enrollment_opens=3, enrollment_closes=8).enrollment_display, "March to August"
+        )
+        self.assertEqual(Program(enrollment_opens=3).enrollment_display, "opens in March")
+        self.assertEqual(Program(enrollment_closes=8).enrollment_display, "closes in August")
+        self.assertEqual(Program(enrollment_notes="Rolling").enrollment_display, "Rolling")
 
     def test_cost_says_the_headline_and_the_detail_without_saying_either_twice(self):
         self.assertEqual(
@@ -3596,6 +3602,19 @@ class ProviderAndClassesTests(TestCase):
             program.description, "<p>We meet weekly.</p><p>Part of Learning with &lt;Patty&gt;.</p>"
         )
         self.assertEqual(submission.description, "We meet weekly.\n\nPart of Learning with Patty.")
+
+
+class MonthFieldTests(TestCase):
+    """Season and enrollment are asked as months (#36)."""
+
+    def test_the_form_asks_for_months(self):
+        from .forms import ProgramRegistrationForm
+
+        for name in ["season_start", "season_end", "enrollment_opens", "enrollment_closes"]:
+            with self.subTest(field=name):
+                choices = list(ProgramRegistrationForm().fields[name].choices)
+                self.assertEqual(choices[0], ("", "Choose a month"))
+                self.assertEqual(choices[1:], [(n, label) for n, label in MONTHS])
 
 
 class SuggestedTagsTests(TestCase):
