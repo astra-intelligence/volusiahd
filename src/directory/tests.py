@@ -1070,6 +1070,40 @@ class AdminTests(TestCase):
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 200)
 
+    def test_a_registration_is_approved_from_its_own_screen(self):
+        """#41: the list actions, as buttons on the registration itself."""
+        submission = Submission.objects.create(program_name="A Program", short_description="s")
+        change = reverse("admin:directory_submission_change", args=[submission.pk])
+        approve = reverse(
+            "admin:directory_submission_approve_and_publish_one", args=[submission.pk]
+        )
+        self.assertContains(self.client.get(change), approve)
+
+        self.assertRedirects(self.client.get(approve), change)
+        submission.refresh_from_db()
+        self.assertEqual(submission.status, Submission.Status.APPROVED)
+        self.assertEqual(submission.created_program.status, Program.Status.PUBLISHED)
+
+        # Decided, so the buttons go, and a second click changes nothing.
+        self.assertNotContains(self.client.get(change), approve)
+        reject = reverse("admin:directory_submission_mark_rejected_one", args=[submission.pk])
+        self.client.get(reject)
+        submission.refresh_from_db()
+        self.assertEqual(submission.status, Submission.Status.APPROVED)
+
+    def test_a_registration_is_drafted_or_rejected_from_its_own_screen(self):
+        draft = Submission.objects.create(program_name="Draft me", short_description="s")
+        drop = Submission.objects.create(program_name="Drop me")
+        self.client.get(
+            reverse("admin:directory_submission_create_draft_program_one", args=[draft.pk])
+        )
+        self.client.get(reverse("admin:directory_submission_mark_rejected_one", args=[drop.pk]))
+        draft.refresh_from_db()
+        drop.refresh_from_db()
+        self.assertEqual(draft.created_program.status, Program.Status.DRAFT)
+        self.assertEqual(drop.status, Submission.Status.REJECTED)
+        self.assertIsNone(drop.created_program)
+
     def test_a_headings_tags_are_chosen_on_the_category_screen(self):
         """Where the editing happens, and where it deliberately does not.
 

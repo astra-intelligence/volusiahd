@@ -672,6 +672,8 @@ class SubmissionAdmin(ModelAdmin):
     date_hierarchy = "created_at"
     inlines = [TagSuggestionInline]
     actions = ["approve_and_publish", "create_draft_program", "mark_rejected"]
+    # The same three as buttons on a registration's own screen (#41).
+    actions_detail = ["approve_and_publish_one", "create_draft_program_one", "mark_rejected_one"]
     # Her chance to correct the registrant's tagging before it is published.
     autocomplete_fields = ["tags"]
 
@@ -713,7 +715,9 @@ class SubmissionAdmin(ModelAdmin):
                     "logo_preview",
                 ],
                 "description": "Category and tags are the two things worth correcting "
-                "before approval. Everything else is what they wrote.",
+                "before approval. Everything else is what they wrote. The Approve and "
+                "Reject buttons at the top don't save this page, so save any "
+                "corrections first.",
             },
         ),
         (
@@ -837,6 +841,34 @@ class SubmissionAdmin(ModelAdmin):
     def mark_rejected(self, request, queryset):
         updated = queryset.update(status=Submission.Status.REJECTED)
         self.message_user(request, f"Rejected {updated}.", messages.SUCCESS)
+
+    @action(description="Approve — publish the program", url_path="approve")
+    def approve_and_publish_one(self, request, object_id):
+        return self._decide_one(request, object_id, self.approve_and_publish)
+
+    @action(description="Approve as a draft", url_path="approve-draft")
+    def create_draft_program_one(self, request, object_id):
+        return self._decide_one(request, object_id, self.create_draft_program)
+
+    @action(description="Reject", url_path="reject")
+    def mark_rejected_one(self, request, object_id):
+        return self._decide_one(request, object_id, self.mark_rejected)
+
+    def get_actions_detail(self, request, object_id):
+        # Only a registration still waiting for a decision gets the buttons.
+        submission = self.get_object(request, object_id)
+        if submission is None or submission.status != Submission.Status.NEW:
+            return []
+        return super().get_actions_detail(request, object_id)
+
+    def _decide_one(self, request, object_id, decide):
+        """Run a list action on this one registration, then come back to it."""
+        queryset = self.get_queryset(request).filter(pk=object_id)
+        if not queryset.filter(status=Submission.Status.NEW).exists():
+            self.message_user(request, "That registration was already decided.", messages.WARNING)
+        else:
+            decide(request, queryset)
+        return redirect(reverse("admin:directory_submission_change", args=[object_id]))
 
     def _approve(self, request, queryset, status):
         created, skipped, incomplete = 0, 0, []
