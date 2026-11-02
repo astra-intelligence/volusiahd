@@ -40,6 +40,11 @@
     return attribute.split(" ").indexOf(slug) !== -1;
   }
 
+  // A word typed into the tag box that isn't a tag is posted with this prefix,
+  // and the server files it as a suggestion. See `NEW_TAG_PREFIX` in forms.py.
+  var NEW_TAG = "new:";
+  var MAX_SUGGESTIONS = 3;
+
   /* A <select multiple> narrowed by removing options, which is why the full set
    * is held here rather than read back off the element: widening again has to put
    * them back in their original order. */
@@ -53,8 +58,16 @@
       all.forEach(function (option) {
         if (offered.indexOf(option) === -1) option.selected = false;
       });
+      // Suggestions typed into the tag box (#40) aren't in the original set, and
+      // belong to no heading, so they survive a change of heading.
+      var typed = Array.prototype.filter.call(select.options, function (option) {
+        return option.value.indexOf(NEW_TAG) === 0;
+      });
       select.textContent = "";
       offered.forEach(function (option) {
+        select.appendChild(option);
+      });
+      typed.forEach(function (option) {
         select.appendChild(option);
       });
       return offered.length;
@@ -76,20 +89,7 @@
     if (enhanced) {
       // `size` only helps the native fallback; Select2 would honour it as a height.
       tagSelect.removeAttribute("size");
-      var defaultMatcher = jq.fn.select2.defaults.defaults.matcher;
-      jq(tagSelect).select2({
-        width: "100%",
-        placeholder: tagSelect.dataset.placeholder || "",
-        closeOnSelect: false,
-        // The list that opens before anyone types is the heading's own
-        // suggestions. General tags (#25) join in once somebody types, so the
-        // suggestions stay short and the rest are still findable.
-        matcher: function (params, data) {
-          var typed = params.term && params.term.trim() !== "";
-          if (!typed && data.element && data.element.hasAttribute("data-general")) return null;
-          return defaultMatcher(params, data);
-        }
-      });
+      oneTagBox(form, tagSelect, jq);
     }
 
     form.querySelectorAll("input[data-class-list]").forEach(function (input) {
@@ -158,8 +158,10 @@
       if (narrowTags) {
         var offered = narrowTags(slug);
         var tagField = tagSelect.closest(".field");
-        if (tagField) tagField.hidden = offered === 0;
-        if (tagHint) tagHint.hidden = slug !== "" && offered !== 0;
+        // With the script, anyone can type a suggestion, so the box stays even
+        // for a heading with nothing to offer (#40).
+        if (tagField) tagField.hidden = !enhanced && offered === 0;
+        if (tagHint) tagHint.hidden = slug !== "" && (enhanced || offered !== 0);
         if (enhanced) jq(tagSelect).trigger("change.select2");
       }
 
@@ -183,6 +185,108 @@
     });
     refresh();
     if (pager) pager.start();
+  }
+
+  /* ---------------------------------------------------------------------
+   * One box to pick tags and suggest new ones (#40).
+   *
+   * Existing tags are picked as before: the heading's own show when the box
+   * opens, and general ones (#25) join in once somebody types. A word that
+   * isn't a tag offers "Suggest a new tag", and becomes a chip posted as
+   * `new:<word>`, which the server files as a suggestion. The separate
+   * Suggest a tag box is the no-script fallback, so it's hidden here and
+   * anything already in it (a form sent back with an error) becomes chips.
+   * ------------------------------------------------------------------- */
+
+  function oneTagBox(form, select, jq) {
+    var defaultMatcher = jq.fn.select2.defaults.defaults.matcher;
+
+    function suggestionCount() {
+      return Array.prototype.filter.call(select.options, function (option) {
+        return option.selected && option.value.indexOf(NEW_TAG) === 0;
+      }).length;
+    }
+
+    function existing(term) {
+      var wanted = term.toLowerCase();
+      return Array.prototype.some.call(select.options, function (option) {
+        return option.text.trim().toLowerCase() === wanted;
+      });
+    }
+
+    function addSuggestion(name) {
+      var value = NEW_TAG + name;
+      var already = Array.prototype.some.call(select.options, function (option) {
+        return option.value.toLowerCase() === value.toLowerCase();
+      });
+      if (!already) select.appendChild(new Option(name, value, true, true));
+    }
+
+    var fallback = form.querySelector("input[name='suggested_tags']");
+    var fallbackField = fallback ? fallback.closest(".field") : null;
+    if (fallback) {
+      fallback.value.split(",").forEach(function (name) {
+        name = name.trim();
+        if (name) addSuggestion(name);
+      });
+      fallback.value = "";
+    }
+    if (fallbackField) {
+      // Its error, if the server sent one, belongs with the box people use.
+      var error = fallbackField.querySelector(".field-error");
+      var tagField = select.closest(".field");
+      if (error && tagField) {
+        tagField.insertBefore(error, tagField.firstChild);
+        tagField.classList.add("has-error");
+      }
+      fallbackField.hidden = true;
+    }
+
+    jq(select).select2({
+      width: "100%",
+      placeholder: select.dataset.placeholder || "",
+      closeOnSelect: false,
+      tags: true,
+      tokenSeparators: [","],
+      // The list that opens before anyone types is the heading's own
+      // suggestions. General tags (#25) join in once somebody types, so the
+      // suggestions stay short and the rest are still findable.
+      matcher: function (params, data) {
+        var typed = params.term && params.term.trim() !== "";
+        if (!typed && data.element && data.element.hasAttribute("data-general")) return null;
+        return defaultMatcher(params, data);
+      },
+      createTag: function (params) {
+        var term = (params.term || "").replace(/,/g, " ").trim();
+        // A word that is already a tag is picked, not suggested twice.
+        if (!term || existing(term)) return null;
+        if (suggestionCount() >= MAX_SUGGESTIONS) {
+          return { id: "limit", text: "You can suggest up to three tags", disabled: true };
+        }
+        return { id: NEW_TAG + term, text: term, newTag: true };
+      },
+      // After the existing tags, not before, so Enter picks "Robotics" rather
+      // than suggesting "Rob".
+      insertTag: function (data, tag) {
+        data.push(tag);
+      },
+      templateResult: function (data) {
+        if (data.newTag) return "Suggest a new tag: " + data.text;
+        return data.text;
+      },
+      templateSelection: function (data) {
+        var value = data.id || "";
+        if (value.indexOf(NEW_TAG) === 0) return data.text + " (suggested)";
+        return data.text;
+      }
+    });
+
+    // The box stays open between picks, and Select2 keeps what was typed;
+    // the next word would run on from the last ("RobLego"). Start it fresh.
+    jq(select).on("select2:select", function () {
+      var search = jq(select).data("select2").$container.find(".select2-search__field");
+      search.val("").trigger("input");
+    });
   }
 
   /* ---------------------------------------------------------------------

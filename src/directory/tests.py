@@ -3617,6 +3617,46 @@ class MonthFieldTests(TestCase):
                 self.assertEqual(choices[1:], [(n, label) for n, label in MONTHS])
 
 
+class OneTagFieldTests(TestCase):
+    """One box picks existing tags and suggests new ones (#40)."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.category = Category.objects.create(name="Co-ops", slug="co-ops")
+        cls.chess = Tag.objects.create(name="Chess", slug="chess")
+        cls.chess.categories.add(cls.category)
+
+    def _post(self, **overrides):
+        payload = RegistrationTests._payload(self, **overrides)
+        return self.client.post(reverse("directory:register"), payload)
+
+    def test_new_chips_become_suggestions_and_tags_stay_tags(self):
+        self._post(tags=[str(self.chess.pk), "new:Lego robotics", "new:Marine biology"])
+        submission = Submission.objects.get()
+        self.assertEqual(list(submission.tags.all()), [self.chess])
+        self.assertEqual(
+            sorted(submission.tag_suggestions.values_list("name", flat=True)),
+            ["Lego robotics", "Marine biology"],
+        )
+
+    def test_chips_and_the_fallback_box_are_counted_together(self):
+        response = self._post(tags=["new:One", "new:Two"], suggested_tags="Three, Four")
+        self.assertEqual(Submission.objects.count(), 0)
+        self.assertIn("at most 3", response.context["form"].errors["suggested_tags"][0])
+
+    def test_a_form_sent_back_keeps_its_suggestions(self):
+        response = self._post(tags=["new:Lego robotics"], program_name="")
+        self.assertEqual(response.context["form"]["suggested_tags"].value(), "Lego robotics")
+
+    def test_the_hint_explains_keywords_and_suggesting(self):
+        from .forms import ProgramRegistrationForm
+
+        hint = str(ProgramRegistrationForm.base_fields["tags"].help_text)
+        self.assertIn("search by keyword", hint)
+        self.assertIn("type it in to suggest it", hint)
+        self.assertTrue(hint.endswith("We review every tag suggestion."))
+
+
 class SuggestedTagsTests(TestCase):
     """Every heading but co-ops offers the tags the PO approved (#24)."""
 

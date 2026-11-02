@@ -24,6 +24,9 @@ HONEYPOT_FIELD = "website_url"
 # How many tags one registration may suggest, and how long each may be: a tag
 # is a word or two, and more than a few suggestions is a description.
 MAX_TAG_SUGGESTIONS = 3
+# A chip typed into the tag box that isn't an existing tag arrives as a tag
+# value with this prefix, and is moved over to the suggestions (#40).
+NEW_TAG_PREFIX = "new:"
 TAG_NAME_MAX = Tag._meta.get_field("name").max_length
 
 # Answers to a tag question that contradict each other, by tag slug, with what to
@@ -209,18 +212,20 @@ class ProgramRegistrationForm(BaseSubmissionForm):
         widget=ScopedTagSelect(
             attrs={
                 "data-tag-select": "",
-                "data-placeholder": "Start typing to find a tag",
+                "data-placeholder": "Pick a tag, or type one in",
                 "size": "8",
             }
         ),
         label="Tags",
-        help_text="These follow from the heading you chose above, and typing finds "
-        "more. Answers to the questions above are tags too — they are asked "
-        "separately because they have a fixed set of answers.",
+        help_text="Tags help families find you when they search by keyword. Pick any "
+        "that fit. If a keyword that matters for your program isn't listed, type it "
+        "in to suggest it — e.g. 'Lego robotics'. We review every tag suggestion.",
     )
 
     # Not a model field: each one becomes a `TagSuggestion` once the
-    # registration is saved, for the directory's owner to decide (#25).
+    # registration is saved, for the directory's owner to decide (#25). With
+    # the script running this box is hidden, and new chips typed into the tag
+    # box arrive here instead (#40); without it, it's where suggestions go.
     suggested_tags = forms.CharField(
         required=False,
         max_length=200,
@@ -401,8 +406,10 @@ class ProgramRegistrationForm(BaseSubmissionForm):
         "delivery": "Choose one",
     }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, data=None, *args, **kwargs):
+        if data is not None and hasattr(data, "getlist"):
+            data = self._move_new_tags(data)
+        super().__init__(data, *args, **kwargs)
         # A registration that cannot be published on approval defeats the point.
         # Only the questions every heading asks can be required up front; the rest
         # are enforced in `clean()`, once we know which heading was picked.
@@ -630,6 +637,25 @@ class ProgramRegistrationForm(BaseSubmissionForm):
         if isinstance(field, models.BooleanField):
             return False
         return None if field.null else ""
+
+    @staticmethod
+    def _move_new_tags(data):
+        """Move tag-box chips that aren't existing tags over to the suggestions.
+
+        One box picks and suggests (#40), but on the server they're still two
+        things: a tag is a primary key, and a suggestion is a word for the
+        owner to decide on. Done before validation, so a new word never reads
+        as an invalid choice.
+        """
+        tags = data.getlist("tags")
+        new = [value[len(NEW_TAG_PREFIX) :] for value in tags if value.startswith(NEW_TAG_PREFIX)]
+        if not new:
+            return data
+        data = data.copy()
+        data.setlist("tags", [value for value in tags if not value.startswith(NEW_TAG_PREFIX)])
+        typed = data.get("suggested_tags", "")
+        data["suggested_tags"] = ", ".join(part for part in [typed, *new] if part.strip())
+        return data
 
     def clean_class_names(self):
         """One tidy comma-separated line, however it was typed (#34).
