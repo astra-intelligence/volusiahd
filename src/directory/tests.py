@@ -665,6 +665,10 @@ class RegistrationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "at least one way for families to reach you")
         self.assertEqual(Submission.objects.count(), 0)
+        # Beside the contact fields, so the paged form opens on that page.
+        form = response.context["form"]
+        self.assertIn("website", form.errors)
+        self.assertFalse(form.non_field_errors())
 
     def test_a_facebook_page_is_enough_to_be_reachable(self):
         """The reason Facebook is its own field.

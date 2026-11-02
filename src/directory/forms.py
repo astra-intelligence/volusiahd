@@ -558,11 +558,14 @@ class ProgramRegistrationForm(BaseSubmissionForm):
         self._fold_in_answers(cleaned, category)
         self._refuse_contradictions(cleaned)
 
+        # On the first contact field rather than the whole form, so it shows
+        # in the contact section and the paged form opens on that page.
         reachable = ["website", "facebook", "email", "phone"]
         if not any(cleaned.get(f) for f in reachable):
-            raise forms.ValidationError(
+            self.add_error(
+                "website",
                 "Please give at least one way for families to reach you — "
-                "a website, a Facebook page, an email address, or a phone number."
+                "a website, a Facebook page, an email address, or a phone number.",
             )
         return cleaned
 
