@@ -398,7 +398,7 @@ h3 {
 .hero:has(+ .home-grid) > :last-child { margin-bottom: 0; }
 .hero:has(+ .home-grid) .lede { max-width: none; }
 .home-grid { display: grid; gap: var(--s-6); margin-block: var(--s-6) var(--s-7); }
-.home-search .search { margin-bottom: 0; }
+.home-search .search { margin-bottom: 0; max-width: none; }
 .home-categories > :last-child, .home-featured > :last-child { margin-bottom: 0; }
 .home-categories h2, .home-featured h2 { margin-top: 0; }
 @media (min-width: 56.01rem) {
