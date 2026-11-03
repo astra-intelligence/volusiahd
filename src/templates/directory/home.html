@@ -2,37 +2,47 @@
 {% load directory_extras %}
 
 {% block content %}
+{% comment %}
+The title spans the width. Under it, on a wide screen: search and featured
+in the left two thirds, categories on the right. On a phone it stacks in source order, which is search, categories,
+featured. The call to action spans the width underneath either way.
+{% endcomment %}
 <section class="hero">
   <h1>Homeschool programs in Volusia County</h1>
   <p class="lede">Co-ops, classes, sports, arts, testing, and support groups — {{ program_count }} program{{ program_count|pluralize }} in one place.</p>
-  <form class="search" action="{% url 'directory:program_list' %}">
-    <label for="q">Search programs</label>
-    <input type="search" id="q" name="q" placeholder="Co-op, algebra, soccer…">
-    <button type="submit">Search</button>
-  </form>
 </section>
 
-<section class="panel">
-  <h2>Browse by category</h2>
-  <ul class="categories">
-    {% for category in categories %}
-      <li><a class="c{{ category|colour_code }}" href="{{ category.get_absolute_url }}">{{ category.name }}</a></li>
-    {% empty %}
-      <li>No categories yet.</li>
-    {% endfor %}
-  </ul>
-</section>
+<div class="home-grid">
+  <section class="home-search">
+    <form class="search" action="{% url 'directory:program_list' %}">
+      <label for="q">Search programs</label>
+      <input type="search" id="q" name="q" placeholder="Co-op, algebra, soccer…">
+      <button type="submit">Search</button>
+    </form>
+  </section>
+
+  <section class="panel home-categories">
+    <h2>Browse by category</h2>
+    <ul class="categories">
+      {% for category in categories %}
+        <li><a class="c{{ category|colour_code }}" href="{{ category.get_absolute_url }}">{{ category.name }}</a></li>
+      {% empty %}
+        <li>No categories yet.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  {% if featured %}
+  <section class="home-featured">
+    <h2>Featured</h2>
+    {% include "directory/_program_cards.html" with programs=featured %}
+  </section>
+  {% endif %}
+</div>
 
 <section class="callout">
   <h2>Run a homeschool program?</h2>
   <p>Add it to the directory yourself. It takes about ten minutes, and you describe it in your own words.</p>
   <p><a class="cta" href="{% url 'directory:register' %}">Register a program</a></p>
 </section>
-
-{% if featured %}
-<section>
-  <h2>Featured</h2>
-  {% include "directory/_program_cards.html" with programs=featured %}
-</section>
-{% endif %}
 {% endblock %}

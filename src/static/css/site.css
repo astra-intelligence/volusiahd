@@ -391,6 +391,29 @@ h3 {
 
 .hero { padding-block: var(--s-4) var(--s-2); }
 
+/* Home page. The title spans the width. Under it: search and featured on
+   the left, categories on the right, and the call to action across the
+   bottom. Narrow screens stack in source order: search, categories,
+   featured. */
+.hero:has(+ .home-grid) > :last-child { margin-bottom: 0; }
+.hero:has(+ .home-grid) .lede { max-width: none; }
+.home-grid { display: grid; gap: var(--s-6); margin-block: var(--s-6) var(--s-7); }
+.home-search .search { margin-bottom: 0; }
+.home-categories > :last-child, .home-featured > :last-child { margin-bottom: 0; }
+.home-categories h2, .home-featured h2 { margin-top: 0; }
+@media (min-width: 56.01rem) {
+  .home-grid {
+    grid-template-columns: 2fr 1fr;
+    grid-template-rows: auto 1fr;
+    grid-template-areas: "search categories" "featured categories";
+    column-gap: var(--s-7);
+    align-items: start;
+  }
+  .home-search { grid-area: search; }
+  .home-categories { grid-area: categories; }
+  .home-featured { grid-area: featured; }
+}
+
 /* --- Search -------------------------------------------------------------- */
 /* The input and its button share one pane, so the pair reads as a single
    control rather than as two things that happen to be adjacent. */
