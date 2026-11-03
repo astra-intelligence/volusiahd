@@ -5,6 +5,8 @@ only way to group it into fieldsets a human can read. `{% field form.x %}`
 keeps that readable without repeating the markup twenty-five times.
 """
 
+from urllib.parse import urljoin
+
 from django import forms, template
 
 register = template.Library()
@@ -38,6 +40,21 @@ def colour_code(category):
     """
     key = getattr(category, "pk", None) or 0
     return (key - 1) % CATEGORY_COLOUR_COUNT + 1
+
+
+@register.filter
+def absolute_url(url, site_base_url):
+    """Make a URL absolute unless it already is.
+
+    ``urljoin`` is a no-op when the second argument is already absolute
+    (starts with a scheme), so this handles both the local case (logo.url is
+    a relative ``/media/...`` path) and production (the Tigris storage
+    backend returns an absolute ``custom_domain`` URL). Prepending the site
+    URL unconditionally — the old ``{{ site_base_url }}{{ url }}`` pattern —
+    produced malformed ``og:image`` values like
+    ``https://volusiahd.orghttps://...`` for stored media.
+    """
+    return urljoin(site_base_url, url)
 
 
 @register.inclusion_tag("directory/_field.html")

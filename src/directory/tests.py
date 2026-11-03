@@ -61,7 +61,7 @@ from .models import (
     join_weekdays,
     split_weekdays,
 )
-from .templatetags.directory_extras import CATEGORY_COLOUR_COUNT, colour_code
+from .templatetags.directory_extras import CATEGORY_COLOUR_COUNT, absolute_url, colour_code
 
 
 class PublicSiteTests(TestCase):
@@ -349,6 +349,45 @@ class CategoryColourTests(SimpleTestCase):
         # the first, which is arbitrary but in range — what matters is that it
         # resolves to a real colour instead of blowing up mid-render.
         self.assertIn(colour_code(FakeCategory(None)), range(1, CATEGORY_COLOUR_COUNT + 1))
+
+
+class AbsoluteUrlFilterTests(SimpleTestCase):
+    """The ``|absolute_url`` filter must not double-prefix already-absolute URLs.
+
+    ``og:image`` on program pages is built from the logo storage URL. Locally
+    that is a relative ``/media/...`` path, but the production Tigris backend
+    returns an absolute ``custom_domain`` URL, so a naive
+    ``{{ site_base_url }}{{ url }}`` concatenation produces
+    ``https://volusiahd.orghttps://...`` and share cards show no logo.
+    """
+
+    def test_relative_url_gets_the_site_prefix(self):
+        self.assertEqual(
+            absolute_url("/media/logos/mmlogo.jpg", "https://volusiahd.org"),
+            "https://volusiahd.org/media/logos/mmlogo.jpg",
+        )
+
+    def test_absolute_url_is_left_untouched(self):
+        self.assertEqual(
+            absolute_url(
+                "https://volusiahd-media.t3.tigrisfiles.io/logos/mmlogo.jpg",
+                "https://volusiahd.org",
+            ),
+            "https://volusiahd-media.t3.tigrisfiles.io/logos/mmlogo.jpg",
+        )
+
+    def test_each_url_has_exactly_one_scheme_and_host(self):
+        from urllib.parse import urlsplit
+
+        for value in ("/media/logos/a.jpg", "https://cdn.example.org/logos/b.jpg"):
+            with self.subTest(value=value):
+                out = absolute_url(value, "https://volusiahd.org")
+                parts = urlsplit(out)
+                self.assertEqual(parts.scheme, "https")
+                # A double-prefixed URL has an empty netloc and the second
+                # host inside the path; a single one parses cleanly.
+                self.assertTrue(parts.netloc)
+                self.assertNotIn("https://", parts.path)
 
 
 class FormControlStyleTests(SimpleTestCase):
