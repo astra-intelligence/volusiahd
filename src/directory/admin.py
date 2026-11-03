@@ -698,6 +698,9 @@ class SubmissionAdmin(ModelAdmin):
         "is_authorized",
         "created_at",
         "created_program",
+        # Set by the Approve and Reject buttons. Picking "Approved" by hand
+        # would mark it approved without ever building the program.
+        "status",
     ]
 
     fieldsets = [
@@ -855,17 +858,18 @@ class SubmissionAdmin(ModelAdmin):
         return self._decide_one(request, object_id, self.mark_rejected)
 
     def get_actions_detail(self, request, object_id):
-        # Only a registration still waiting for a decision gets the buttons.
+        # Buttons until a program exists. A rejected registration can still be
+        # approved, as it can from the list.
         submission = self.get_object(request, object_id)
-        if submission is None or submission.status != Submission.Status.NEW:
+        if submission is None or submission.created_program_id:
             return []
         return super().get_actions_detail(request, object_id)
 
     def _decide_one(self, request, object_id, decide):
         """Run a list action on this one registration, then come back to it."""
         queryset = self.get_queryset(request).filter(pk=object_id)
-        if not queryset.filter(status=Submission.Status.NEW).exists():
-            self.message_user(request, "That registration was already decided.", messages.WARNING)
+        if queryset.filter(created_program__isnull=False).exists():
+            self.message_user(request, "That registration already has a program.", messages.WARNING)
         else:
             decide(request, queryset)
         return redirect(reverse("admin:directory_submission_change", args=[object_id]))

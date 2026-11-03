@@ -1091,6 +1091,22 @@ class AdminTests(TestCase):
         submission.refresh_from_db()
         self.assertEqual(submission.status, Submission.Status.APPROVED)
 
+    def test_a_registration_marked_approved_by_hand_can_still_be_published(self):
+        """The bug behind v0.7.2: a hand-set status hid the buttons with no program built."""
+        submission = Submission.objects.create(
+            program_name="A Program", short_description="s", status=Submission.Status.APPROVED
+        )
+        change = reverse("admin:directory_submission_change", args=[submission.pk])
+        response = self.client.get(change)
+        self.assertNotContains(response, '<select name="status"')
+        approve = reverse(
+            "admin:directory_submission_approve_and_publish_one", args=[submission.pk]
+        )
+        self.assertContains(response, approve)
+        self.client.get(approve)
+        submission.refresh_from_db()
+        self.assertEqual(submission.created_program.status, Program.Status.PUBLISHED)
+
     def test_a_registration_is_drafted_or_rejected_from_its_own_screen(self):
         draft = Submission.objects.create(program_name="Draft me", short_description="s")
         drop = Submission.objects.create(program_name="Drop me")
